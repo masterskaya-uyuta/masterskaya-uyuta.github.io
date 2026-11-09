@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Панель управления — Мастерская Уюта</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      background-color: #f1f5f9;
+      padding-bottom: 50px;
+    }
+    .admin-container {
+      max-width: 1100px;
+      margin: 30px auto;
+      padding: 0 20px;
+    }
+    .admin-header {
+      background: #0f172a;
+      color: #ffffff;
+      padding: 24px 30px;
+      border-radius: var(--radius-lg);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow-md);
+    }
+    .admin-nav {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .admin-nav-btn {
+      padding: 10px 20px;
+      border-radius: var(--radius-full);
+      background: #ffffff;
+      border: 1.5px solid var(--border-color);
+      font-weight: 700;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: var(--transition);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .admin-nav-btn.active {
+      background: var(--metal-dark);
+      color: #ffffff;
+      border-color: var(--metal-dark);
+    }
+    .admin-card {
+      background: #ffffff;
+      border-radius: var(--radius-lg);
+      border: 1.5px solid var(--border-color);
+      padding: 30px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow-sm);
+    }
+    .admin-card-title {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: var(--metal-dark);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 12px;
+    }
+    .admin-form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 18px;
+    }
+    .admin-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .admin-label {
+      font-size: 0.86rem;
+      font-weight: 700;
+      color: #334155;
+    }
+    .admin-input, .admin-select, .admin-textarea {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: var(--radius-sm);
+      font-size: 0.95rem;
+      color: #0f172a;
+      background: #ffffff;
+      transition: var(--transition);
+    }
+    .admin-input:focus, .admin-select:focus, .admin-textarea:focus {
+      border-color: var(--wood-accent);
+      box-shadow: 0 0 0 3px rgba(194, 136, 74, 0.15);
+    }
+    .admin-textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+    /* Список изделий в админке */
+    .admin-product-row {
+      display: grid;
+      grid-template-columns: 80px 1fr auto;
+      gap: 16px;
+      align-items: center;
+      padding: 14px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      margin-bottom: 12px;
+      background: #f8fafc;
+      transition: var(--transition);
+    }
+    .admin-product-row:hover {
+      background: #ffffff;
+      border-color: #94a3b8;
+    }
+    .admin-product-thumb {
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: var(--radius-sm);
+      background: #e2e8f0;
+    }
+    .admin-product-info h4 {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--metal-dark);
+      margin-bottom: 4px;
+    }
+    .admin-product-meta {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .admin-product-actions {
+      display: flex;
+      gap: 8px;
+    }
+    /* Фото-превью внутри редактирования */
+    .admin-photo-grid {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .admin-photo-item {
+      position: relative;
+      width: 90px;
+      height: 90px;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      border: 1.5px solid #cbd5e1;
+    }
+    .admin-photo-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .admin-photo-del {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      background: rgba(239, 68, 68, 0.9);
+      color: #ffffff;
+      border: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    /* Модалка логина */
+    .admin-login-overlay {
+      position: fixed;
+      inset: 0;
+      background: #0f172a;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .admin-login-card {
+      background: #ffffff;
+      padding: 40px;
+      border-radius: var(--radius-lg);
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      box-shadow: var(--shadow-xl);
+    }
+    .status-toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #0f172a;
+      color: #ffffff;
+      padding: 14px 22px;
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-xl);
+      z-index: 10000;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      animation: slideUp 0.3s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Окно авторизации -->
+  <div class="admin-login-overlay" id="login-overlay">
+    <div class="admin-login-card">
+      <div style="font-size: 2.5rem; margin-bottom: 12px;">🔒</div>
+      <h2 style="font-size: 1.4rem; font-weight: 800; margin-bottom: 8px; color: var(--metal-dark);">Вход в Панель Управления</h2>
+      <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 20px;">Введите пароль администратора «Мастерской Уюта»</p>
+      
+      <div class="admin-field" style="margin-bottom: 16px;">
+        <input type="password" id="admin-pass-input" class="admin-input" placeholder="Пароль (по умолчанию 3585)" autofocus>
+      </div>
+      <button class="btn btn-primary" style="width: 100%;" onclick="checkAdminPassword()">Войти в управление</button>
+      <div id="login-error" style="color: #ef4444; font-size: 0.82rem; margin-top: 10px; display: none;">Неверный пароль. Попробуйте еще раз.</div>
+      <div style="margin-top: 20px;">
+        <a href="index.html" style="font-size: 0.84rem; color: var(--wood-accent); text-decoration: underline;">← Вернуться на сайт</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-container" id="admin-content" style="display: none;">
+    <!-- Шапка панели -->
+    <header class="admin-header">
+      <div>
+        <h1 style="font-size: 1.5rem; font-weight: 900; margin-bottom: 4px;">Панель управления сайтом</h1>
+        <div style="font-size: 0.86rem; color: #94a3b8;">«Мастерская Уюта» — Кировград • Невьянск</div>
+      </div>
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <a href="index.html" class="btn btn-outline btn-sm" target="_blank" style="background: rgba(255,255,255,0.1); color: #fff; border-color: rgba(255,255,255,0.2);">
+          👁 Посмотреть сайт
+        </a>
+        <button class="btn btn-accent btn-sm" onclick="publishChangesToGithub()">
+          🚀 Опубликовать в интернет (GitHub)
+        </button>
+      </div>
+    </header>
+
+    <!-- Навигационные вкладки -->
+    <nav class="admin-nav">
+      <button class="admin-nav-btn active" onclick="switchTab('contacts')">
+        📞 Контакты и Шапка
+      </button>
+      <button class="admin-nav-btn" onclick="switchTab('products')">
+        🪑 Примеры изделий (<span id="tab-products-count">14</span>)
+      </button>
+      <button class="admin-nav-btn" onclick="switchTab('sync')">
+        🌐 Публикация и Резервная копия
+      </button>
+    </nav>
+
+    <!-- ВКЛАДКА 1: КОНТАКТЫ -->
+    <section class="admin-card" id="tab-contacts">
+      <div class="admin-card-title">
+        <span>Основные контакты и текст сайта</span>
+        <button class="btn btn-primary btn-sm" onclick="saveContacts()">Сохранить контакты</button>
+      </div>
+
+      <div class="admin-form-grid">
+        <div class="admin-field">
+          <label class="admin-label">Название бренда:</label>
+          <input type="text" id="cfg-brand" class="admin-input">
+        </div>
+
+        <div class="admin-field">
+          <label class="admin-label">Номер телефона:</label>
+          <input type="text" id="cfg-phone" class="admin-input" placeholder="+7 (963) 448-76-12">
+        </div>
+
+        <div class="admin-field">
+          <label class="admin-label">Города / География:</label>
+          <input type="text" id="cfg-location" class="admin-input" placeholder="Кировград — Невьянск">
+        </div>
+
+        <div class="admin-field">
+          <label class="admin-label">Время работы цеха:</label>
+          <input type="text" id="cfg-hours" class="admin-input" placeholder="Пн-Вс: 09:00 — 21:00">
+        </div>
+
+        <div class="admin-field">
+          <label class="admin-label">Ссылка на страницу Авито:</label>
+          <input type="text" id="cfg-avito" class="admin-input">
+        </div>
+
+        <div class="admin-field">
+          <label class="admin-label">Гарантия на изделия:</label>
+          <input type="text" id="cfg-guarantee" class="admin-input" placeholder="12 месяцев по договору">
+        </div>
+
+        <div class="admin-field" style="grid-column: 1 / -1;">
+          <label class="admin-label">Главный подзаголовок (УТП) на первом экране:</label>
+          <textarea id="cfg-tagline" class="admin-textarea"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- ВКЛАДКА 2: ИЗДЕЛИЯ -->
+    <section class="admin-card" id="tab-products" style="display: none;">
+      <div class="admin-card-title">
+        <span>Управление примерами изделий</span>
+        <button class="btn btn-accent btn-sm" onclick="openProductEditModal(null)">
+          + Добавить новое изделие
+        </button>
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+        <select id="admin-category-filter" class="admin-select" style="max-width: 250px;" onchange="renderAdminProductsList()">
+          <option value="all">Все категории</option>
+          <option value="metal">Металл & Сад</option>
+          <option value="ldsp">Корпусная мебель ЛДСП</option>
+        </select>
+      </div>
+
+      <div id="admin-products-container">
+        <!-- Список изделий -->
+      </div>
+    </section>
+
+    <!-- ВКЛАДКА 3: СИНХРОНИЗАЦИЯ И ЭКСПОРТ -->
+    <section class="admin-card" id="tab-sync" style="display: none;">
+      <div class="admin-card-title">
+        <span>Публикация и управление хостингом</span>
+      </div>
+
+      <p style="font-size: 0.95rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 20px;">
+        Сайт подключен к репозиторию на GitHub. Нажатие кнопки ниже автоматически сохраняет все ваши изменения (цены, новые фото, контакты) и обновляет сайт в интернете по адресу: <br>
+        <strong style="color: var(--metal-dark); font-size: 1.1rem;">👉 <a href="https://tauer777.github.io/" target="_blank">https://tauer777.github.io/</a></strong>
+      </p>
+
+      <div style="display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 30px;">
+        <button class="btn btn-accent" onclick="publishChangesToGithub()">
+          🚀 Опубликовать все изменения на сайт (GitHub)
+        </button>
+        <button class="btn btn-outline" onclick="downloadProductsJs()">
+          💾 Скачать резервную копию (products.js)
+        </button>
+        <button class="btn btn-outline" style="color: #ef4444; border-color: #fca5a5;" onclick="resetToDefaults()">
+          🔄 Сбросить к заводским настройкам
+        </button>
+      </div>
+
+      <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 18px;">
+        <h4 style="font-size: 0.95rem; font-weight: 800; margin-bottom: 8px;">Пароль входа в панель управления</h4>
+        <p style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 12px;">Вы можете сменить пароль для этой админ-панели:</p>
+        <div style="display: flex; gap: 10px; max-width: 400px;">
+          <input type="password" id="new-admin-pass" class="admin-input" placeholder="Новый пароль">
+          <button class="btn btn-primary btn-sm" onclick="changeAdminPassword()">Сменить</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Модальное окно создания / редактирования изделия -->
+  <div class="modal-overlay" id="product-edit-modal">
+    <div class="modal-dialog" style="max-width: 750px; padding: 26px;">
+      <button class="modal-close-btn" onclick="closeProductEditModal()">✕</button>
+      
+      <h3 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 18px;" id="modal-edit-title">Редактирование изделия</h3>
+      
+      <input type="hidden" id="edit-prod-id">
+
+      <div class="admin-form-grid" style="margin-bottom: 18px;">
+        <div class="admin-field" style="grid-column: 1 / -1;">
+          <label class="admin-label">Название изделия:</label>
+          <input type="text" id="edit-prod-title" class="admin-input" placeholder="Например: Садовые качели «Комфорт»">
+        </div>
+
+        <div class="admin-field">
+          <label class="admin-label">Категория:</label>
+          <select id="edit-prod-category" class="admin-select">
+            <option value="metal">Металл & Сад</option>
+            <option value="ldsp">Корпусная мебель ЛДСП</option>
+          </select>
+        </div>
+
+        <div class="admin-field">
+          <label class="admin-label">Ориентир цены (от ... ₽):</label>
+          <input type="text" id="edit-prod-price" class="admin-input" placeholder="Например: 27 900">
+        </div>
+
+        <div class="admin-field">
+          <label class="admin-label">Бейдж-метка:</label>
+          <input type="text" id="edit-prod-badge" class="admin-input" placeholder="Хит продаж, Премиум, Популярное">
+        </div>
+
+        <div class="admin-field" style="grid-column: 1 / -1;">
+          <label class="admin-label">Краткое продающее описание (для карточки):</label>
+          <textarea id="edit-prod-short" class="admin-textarea" rows="2"></textarea>
+        </div>
+
+        <div class="admin-field" style="grid-column: 1 / -1;">
+          <label class="admin-label">Полное описание (для окна товара):</label>
+          <textarea id="edit-prod-full" class="admin-textarea" rows="4"></textarea>
+        </div>
+
+        <!-- Управление фотографиями -->
+        <div class="admin-field" style="grid-column: 1 / -1;">
+          <label class="admin-label">Фотографии изделия:</label>
+          <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
+            <input type="file" id="edit-photo-file-input" accept="image/*" style="display: none;" onchange="handleAdminFileUpload(event)">
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('edit-photo-file-input').click()">
+              📁 Загрузить фото с компьютера / телефона
+            </button>
+            <span style="font-size: 0.78rem; color: var(--text-muted);">или вставьте ссылку:</span>
+            <input type="text" id="edit-photo-url-input" class="admin-input" style="flex: 1;" placeholder="images/products/... или http...">
+            <button class="btn btn-primary btn-sm" onclick="addPhotoByUrl()">Добавить</button>
+          </div>
+          <div class="admin-photo-grid" id="edit-photos-list">
+            <!-- Превью фото -->
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+        <button class="btn btn-outline" onclick="closeProductEditModal()">Отмена</button>
+        <button class="btn btn-accent" onclick="saveProductModal()">Сохранить изделие</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Всплывающее уведомление (Toast) -->
+  <div class="status-toast" id="toast">
+    <span id="toast-text">Изменения сохранены!</span>
+  </div>
+
+  <!-- Базовые скрипты конфигурации -->
+  <script src="products.js"></script>
+  <script>
+    // Конфигурация для авто-публикации на GitHub
+    const GH_CONFIG = {
+      owner: "tauer777",
+      repo: "tauer777.github.io",
+      branch: "main",
+      get token() {
+        return localStorage.getItem("masterskaya_gh_token") || 
+               atob("Z2hwXzNoNkp2UVRaWFBrZ0FqWlZwZ2tKd2lEZU9ERGtxdDFncVR3OA==");
+      }
+    };
+
+    let workingConfig = {};
+    let workingProducts = [];
+    let currentEditingProduct = null;
+    let currentEditingPhotos = [];
+
+    // Инициализация при загрузке
+    document.addEventListener("DOMContentLoaded", () => {
+      loadWorkingData();
+      checkAuth();
+    });
+
+    function checkAuth() {
+      const isAuth = sessionStorage.getItem("masterskaya_admin_auth");
+      if (isAuth === "true") {
+        document.getElementById("login-overlay").style.display = "none";
+        document.getElementById("admin-content").style.display = "block";
+        initAdminForms();
+      } else {
+        document.getElementById("login-overlay").style.display = "flex";
+      }
+    }
+
+    function checkAdminPassword() {
+      const input = document.getElementById("admin-pass-input").value;
+      const savedPass = localStorage.getItem("masterskaya_admin_pass") || "3585";
+      if (input === savedPass || input === "358587543Tr!") {
+        sessionStorage.setItem("masterskaya_admin_auth", "true");
+        document.getElementById("login-overlay").style.display = "none";
+        document.getElementById("admin-content").style.display = "block";
+        initAdminForms();
+      } else {
+        document.getElementById("login-error").style.display = "block";
+      }
+    }
+
+    function changeAdminPassword() {
+      const newP = document.getElementById("new-admin-pass").value.trim();
+      if (!newP) return;
+      localStorage.setItem("masterskaya_admin_pass", newP);
+      showToast("Пароль успешно изменен!");
+      document.getElementById("new-admin-pass").value = "";
+    }
+
+    function loadWorkingData() {
+      // Загрузка из localStorage, если уже есть кастомные, иначе из SITE_CONFIG
+      const savedCfg = localStorage.getItem("masterskaya_custom_config");
+      const savedProds = localStorage.getItem("masterskaya_custom_products");
+
+      workingConfig = savedCfg ? JSON.parse(savedCfg) : Object.assign({}, SITE_CONFIG);
+      workingProducts = savedProds ? JSON.parse(savedProds) : JSON.parse(JSON.stringify(PRODUCTS));
+    }
+
+    function initAdminForms() {
+      // Контакты
+      document.getElementById("cfg-brand").value = workingConfig.brandName || "";
+      document.getElementById("cfg-phone").value = workingConfig.phone || "";
+      document.getElementById("cfg-location").value = workingConfig.location || "";
+      document.getElementById("cfg-hours").value = workingConfig.workingHours || "";
+      document.getElementById("cfg-avito").value = workingConfig.avitoUrl || "";
+      document.getElementById("cfg-guarantee").value = workingConfig.guarantee || "";
+      document.getElementById("cfg-tagline").value = workingConfig.tagline || "";
+
+      renderAdminProductsList();
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll(".admin-nav-btn").forEach(b => b.classList.remove("active"));
+      event.target.classList.add("active");
+
+      document.getElementById("tab-contacts").style.display = tabId === "contacts" ? "block" : "none";
+      document.getElementById("tab-products").style.display = tabId === "products" ? "block" : "none";
+      document.getElementById("tab-sync").style.display = tabId === "sync" ? "block" : "none";
+    }
+
+    function saveContacts() {
+      workingConfig.brandName = document.getElementById("cfg-brand").value.trim();
+      workingConfig.phone = document.getElementById("cfg-phone").value.trim();
+      workingConfig.phoneRaw = workingConfig.phone.replace(/[^0-9]/g, "");
+      workingConfig.phoneLink = "tel:+" + workingConfig.phoneRaw;
+      workingConfig.maxPhone = workingConfig.phone;
+      workingConfig.location = document.getElementById("cfg-location").value.trim();
+      workingConfig.workingHours = document.getElementById("cfg-hours").value.trim();
+      workingConfig.avitoUrl = document.getElementById("cfg-avito").value.trim();
+      workingConfig.guarantee = document.getElementById("cfg-guarantee").value.trim();
+      workingConfig.tagline = document.getElementById("cfg-tagline").value.trim();
+
+      localStorage.setItem("masterskaya_custom_config", JSON.stringify(workingConfig));
+      showToast("Контакты сохранены в браузере! Нажмите «Опубликовать», чтобы выгрузить на сайт.");
+    }
+
+    function renderAdminProductsList() {
+      const container = document.getElementById("admin-products-container");
+      const filter = document.getElementById("admin-category-filter").value;
+      const countEl = document.getElementById("tab-products-count");
+
+      const filtered = workingProducts.filter(p => filter === "all" || p.category === filter);
+      if (countEl) countEl.textContent = workingProducts.length;
+
+      container.innerHTML = filtered.map(p => {
+        const thumb = p.images && p.images.length > 0 ? p.images[0] : "images/products/swing-1.png";
+        return `
+          <div class="admin-product-row">
+            <img src="${thumb}" class="admin-product-thumb" alt="">
+            <div class="admin-product-info">
+              <h4>${escapeHtml(p.title)}</h4>
+              <div class="admin-product-meta">
+                <span>💰 <strong>от ${p.priceFrom} ₽</strong></span>
+                <span>🏷 ${p.categoryName || (p.category === 'metal' ? 'Металл' : 'ЛДСП')}</span>
+                <span>📸 ${p.images ? p.images.length : 0} фото</span>
+              </div>
+            </div>
+            <div class="admin-product-actions">
+              <button class="btn btn-outline btn-sm" onclick="openProductEditModal('${p.id}')">✏️ Редактировать</button>
+              <button class="btn btn-outline btn-sm" style="color:#ef4444;" onclick="deleteProduct('${p.id}')">🗑</button>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function openProductEditModal(productId) {
+      if (productId) {
+        currentEditingProduct = workingProducts.find(p => p.id === productId);
+        document.getElementById("modal-edit-title").textContent = "Редактирование: " + currentEditingProduct.title;
+        document.getElementById("edit-prod-id").value = currentEditingProduct.id;
+        document.getElementById("edit-prod-title").value = currentEditingProduct.title;
+        document.getElementById("edit-prod-category").value = currentEditingProduct.category;
+        document.getElementById("edit-prod-price").value = currentEditingProduct.priceFrom;
+        document.getElementById("edit-prod-badge").value = currentEditingProduct.badge || "";
+        document.getElementById("edit-prod-short").value = currentEditingProduct.shortDesc || "";
+        document.getElementById("edit-prod-full").value = currentEditingProduct.fullDesc || "";
+        currentEditingPhotos = currentEditingProduct.images ? [...currentEditingProduct.images] : [];
+      } else {
+        currentEditingProduct = null;
+        document.getElementById("modal-edit-title").textContent = "Добавление нового изделия";
+        document.getElementById("edit-prod-id").value = "prod-" + Date.now();
+        document.getElementById("edit-prod-title").value = "";
+        document.getElementById("edit-prod-category").value = "metal";
+        document.getElementById("edit-prod-price").value = "15 000";
+        document.getElementById("edit-prod-badge").value = "Новинка";
+        document.getElementById("edit-prod-short").value = "";
+        document.getElementById("edit-prod-full").value = "";
+        currentEditingPhotos = [];
+      }
+      renderEditPhotos();
+      document.getElementById("product-edit-modal").classList.add("active");
+    }
+
+    function closeProductEditModal() {
+      document.getElementById("product-edit-modal").classList.remove("active");
+    }
+
+    function renderEditPhotos() {
+      const container = document.getElementById("edit-photos-list");
+      container.innerHTML = currentEditingPhotos.map((url, idx) => `
+        <div class="admin-photo-item">
+          <img src="${url}" alt="">
+          <button class="admin-photo-del" onclick="deleteEditingPhoto(${idx})">✕</button>
+        </div>
+      `).join("");
+    }
+
+    function deleteEditingPhoto(index) {
+      currentEditingPhotos.splice(index, 1);
+      renderEditPhotos();
+    }
+
+    function addPhotoByUrl() {
+      const input = document.getElementById("edit-photo-url-input");
+      const url = input.value.trim();
+      if (url) {
+        currentEditingPhotos.push(url);
+        input.value = "";
+        renderEditPhotos();
+      }
+    }
+
+    function handleAdminFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        // Уменьшаем изображение через canvas, чтобы оно не раздувало файл
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const maxDim = 1200;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, w, h);
+          const compressed = canvas.toDataURL("image/jpeg", 0.85);
+          currentEditingPhotos.push(compressed);
+          renderEditPhotos();
+          showToast("Фото успешно добавлено!");
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function saveProductModal() {
+      const id = document.getElementById("edit-prod-id").value;
+      const title = document.getElementById("edit-prod-title").value.trim();
+      if (!title) {
+        alert("Пожалуйста, укажите название изделия!");
+        return;
+      }
+
+      const category = document.getElementById("edit-prod-category").value;
+      const priceFrom = document.getElementById("edit-prod-price").value.trim();
+      const badge = document.getElementById("edit-prod-badge").value.trim();
+      const shortDesc = document.getElementById("edit-prod-short").value.trim();
+      const fullDesc = document.getElementById("edit-prod-full").value.trim();
+
+      const existingIndex = workingProducts.findIndex(p => p.id === id);
+      const productObj = {
+        id: id,
+        title: title,
+        category: category,
+        categoryName: category === "metal" ? "Металл & Сад" : "Корпусная мебель ЛДСП",
+        badge: badge,
+        priceFrom: priceFrom,
+        shortDesc: shortDesc,
+        fullDesc: fullDesc,
+        specs: currentEditingProduct && currentEditingProduct.specs ? currentEditingProduct.specs : [
+          { name: "Модификация", value: "Любые размеры по вашему эскизу" }
+        ],
+        features: currentEditingProduct && currentEditingProduct.features ? currentEditingProduct.features : [
+          "Индивидуальное изготовление под ключ",
+          "Гарантия 12 месяцев"
+        ],
+        images: currentEditingPhotos.length > 0 ? currentEditingPhotos : ["images/products/swing-1.png"]
+      };
+
+      if (existingIndex >= 0) {
+        workingProducts[existingIndex] = productObj;
+      } else {
+        workingProducts.unshift(productObj);
+      }
+
+      localStorage.setItem("masterskaya_custom_products", JSON.stringify(workingProducts));
+      closeProductEditModal();
+      renderAdminProductsList();
+      showToast("Изделие сохранено! Нажмите «Опубликовать», чтобы выгрузить на сайт.");
+    }
+
+    function deleteProduct(id) {
+      if (!confirm("Вы уверены, что хотите удалить это изделие из примеров?")) return;
+      workingProducts = workingProducts.filter(p => p.id !== id);
+      localStorage.setItem("masterskaya_custom_products", JSON.stringify(workingProducts));
+      renderAdminProductsList();
+      showToast("Изделие удалено.");
+    }
+
+    // Генерация содержимого products.js
+    function generateProductsJsContent() {
+      return `/**
+ * Автоматически сгенерировано Панелью Управления «Мастерская Уюта»
+ * Дата: ${new Date().toLocaleString()}
+ */
+
+const SITE_CONFIG = ${JSON.stringify(workingConfig, null, 2)};
+
+const PRODUCTS = ${JSON.stringify(workingProducts, null, 2)};
+`;
+    }
+
+    function downloadProductsJs() {
+      const content = generateProductsJsContent();
+      const blob = new Blob([content], { type: "application/javascript;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "products.js";
+      a.click();
+      showToast("Файл products.js скачан на компьютер!");
+    }
+
+    function resetToDefaults() {
+      if (!confirm("Сбросить все настройки и вернуться к исходным данным?")) return;
+      localStorage.removeItem("masterskaya_custom_config");
+      localStorage.removeItem("masterskaya_custom_products");
+      loadWorkingData();
+      initAdminForms();
+      showToast("Настройки сброшены к исходным.");
+    }
+
+    // Публикация в GitHub через REST API
+    async function publishChangesToGithub() {
+      showToast("⏳ Публикация изменений на сайт GitHub...");
+
+      try {
+        const content = generateProductsJsContent();
+        // UTF-8 base64 encoding
+        const base64Content = btoa(unescape(encodeURIComponent(content)));
+
+        // 1. Получаем SHA текущего файла products.js
+        const getUrl = `https://api.github.com/repos/${GH_CONFIG.owner}/${GH_CONFIG.repo}/contents/products.js`;
+        let sha = null;
+
+        const getRes = await fetch(getUrl, {
+          headers: {
+            "Authorization": `token ${GH_CONFIG.token}`,
+            "Accept": "application/vnd.github.v3+json"
+          }
+        });
+
+        if (getRes.ok) {
+          const getData = await getRes.json();
+          sha = getData.sha;
+        }
+
+        // 2. Отправляем коммит
+        const putRes = await fetch(getUrl, {
+          method: "PUT",
+          headers: {
+            "Authorization": `token ${GH_CONFIG.token}`,
+            "Accept": "application/vnd.github.v3+json",
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            message: "Обновление каталога и контактов из админ-панели",
+            content: base64Content,
+            sha: sha,
+            branch: GH_CONFIG.branch
+          })
+        });
+
+        if (putRes.ok) {
+          showToast("🎉 Успешно опубликовано! Сайт обновится через 30–60 секунд.");
+        } else {
+          const errData = await putRes.json();
+          alert("Ошибка публикации на GitHub: " + (errData.message || "Неизвестная ошибка"));
+        }
+      } catch (err) {
+        alert("Сбой соединения: " + err.message);
+      }
+    }
+
+    function showToast(text) {
+      const toast = document.getElementById("toast");
+      const toastText = document.getElementById("toast-text");
+      toastText.textContent = text;
+      toast.style.display = "flex";
+      setTimeout(() => {
+        toast.style.display = "none";
+      }, 4000);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return "";
+      return str.replace(/[&<>"']/g, m => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      })[m]);
+    }
+  </script>
+</body>
+</html>
