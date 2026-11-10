@@ -503,4 +503,20 @@ function initMobileNav() {
   document.querySelectorAll(".mobile-nav-links a").forEach(a => {
     a.addEventListener("click", closeMenu);
   });
+
+  // Секретный переход в админку по тройному клику на «Мага хакер))»
+  const secretTrigger = document.getElementById("secret-admin-trigger");
+  if (secretTrigger) {
+    let clickCount = 0;
+    let timer = null;
+    secretTrigger.addEventListener("click", () => {
+      clickCount++;
+      if (clickCount === 3) {
+        window.location.href = "admin.html";
+        clickCount = 0;
+      }
+      clearTimeout(timer);
+      timer = setTimeout(() => { clickCount = 0; }, 1500);
+    });
+  }
 }

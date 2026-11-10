@@ -230,13 +230,15 @@
     <div class="admin-login-card">
       <div style="font-size: 2.5rem; margin-bottom: 12px;">🔒</div>
       <h2 style="font-size: 1.4rem; font-weight: 800; margin-bottom: 8px; color: var(--metal-dark);">Вход в Панель Управления</h2>
-      <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 20px;">Введите пароль администратора «Мастерской Уюта»</p>
+      <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 20px;">Закрытый раздел для владельца «Мастерской Уюта»</p>
       
-      <div class="admin-field" style="margin-bottom: 16px;">
-        <input type="password" id="admin-pass-input" class="admin-input" placeholder="Пароль (по умолчанию 3585)" autofocus>
-      </div>
-      <button class="btn btn-primary" style="width: 100%;" onclick="checkAdminPassword()">Войти в управление</button>
-      <div id="login-error" style="color: #ef4444; font-size: 0.82rem; margin-top: 10px; display: none;">Неверный пароль. Попробуйте еще раз.</div>
+      <form onsubmit="event.preventDefault(); checkAdminPassword();">
+        <div class="admin-field" style="margin-bottom: 16px;">
+          <input type="password" id="admin-pass-input" class="admin-input" placeholder="Введите пароль доступа" autocomplete="current-password" autofocus>
+        </div>
+        <button type="submit" id="login-submit-btn" class="btn btn-primary" style="width: 100%;">Войти</button>
+      </form>
+      <div id="login-error" style="color: #ef4444; font-size: 0.84rem; margin-top: 12px; font-weight: 600; display: none;">Неверный пароль доступа.</div>
       <div style="margin-top: 20px;">
         <a href="index.html" style="font-size: 0.84rem; color: var(--wood-accent); text-decoration: underline;">← Вернуться на сайт</a>
       </div>
@@ -256,6 +258,9 @@
         </a>
         <button class="btn btn-accent btn-sm" onclick="publishChangesToGithub()">
           🚀 Опубликовать в интернет (GitHub)
+        </button>
+        <button class="btn btn-outline btn-sm" style="color: #fca5a5; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.1);" onclick="adminLogout()">
+          🚪 Выйти
         </button>
       </div>
     </header>
@@ -363,12 +368,13 @@
         </button>
       </div>
 
-      <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 18px;">
-        <h4 style="font-size: 0.95rem; font-weight: 800; margin-bottom: 8px;">Пароль входа в панель управления</h4>
-        <p style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 12px;">Вы можете сменить пароль для этой админ-панели:</p>
-        <div style="display: flex; gap: 10px; max-width: 400px;">
-          <input type="password" id="new-admin-pass" class="admin-input" placeholder="Новый пароль">
-          <button class="btn btn-primary btn-sm" onclick="changeAdminPassword()">Сменить</button>
+      <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: var(--radius-md); padding: 18px; display: flex; align-items: center; gap: 14px;">
+        <div style="font-size: 1.8rem;">🔒</div>
+        <div>
+          <h4 style="font-size: 0.95rem; font-weight: 800; color: var(--metal-dark); margin-bottom: 4px;">Безопасность панели управления</h4>
+          <p style="font-size: 0.84rem; color: var(--text-muted); line-height: 1.5;">
+            Панель защищена стойким алгоритмом хеширования SHA-256 и сквозным шифрованием ключей публикации AES-GCM. Доступ возможен только по вашему секретному паролю.
+          </p>
         </div>
       </div>
     </section>
@@ -450,14 +456,27 @@
   <!-- Базовые скрипты конфигурации -->
   <script src="products.js"></script>
   <script>
-    // Конфигурация для авто-публикации на GitHub
+    // Криптографическая защита доступа (SHA-256 + AES-GCM)
+    const AUTH_SALT = "mu_salt_2026_secure";
+    const EXPECTED_HASH = "bd337e12f096a1097ff6fd8d919d190cd70a35f7969e8ced90133ac9caa23dda";
+    const CIPHER_NONCE_B64 = "Zkza0MZaOLYHAplB";
+    const CIPHER_TEXT_B64 = "yvCeTxPUFSiBqBABOMDQqMtnylWbjTN5M9uPzwJ558a40DvI4KuR4MG8BxyazeQ6hEBEggqefSw=";
+
+    // Сброс старых небезопасных сессионных ключей
+    try {
+      sessionStorage.removeItem("masterskaya_admin_auth");
+      localStorage.removeItem("masterskaya_admin_pass");
+      localStorage.removeItem("masterskaya_gh_token");
+    } catch (e) {}
+
+    let _sessionDecryptedToken = sessionStorage.getItem("__mu_sec_token_v3") || null;
+
     const GH_CONFIG = {
       owner: "masterskaya-uyuta",
       repo: "masterskaya-uyuta.github.io",
       branch: "main",
       get token() {
-        return localStorage.getItem("masterskaya_gh_token") || 
-               atob("Z2hwXzNoNkp2UVRaWFBrZ0FqWlZwZ2tKd2lEZU9ERGtxdDFncVR3OA==");
+        return _sessionDecryptedToken || sessionStorage.getItem("__mu_sec_token_v3") || "";
       }
     };
 
@@ -466,6 +485,24 @@
     let currentEditingProduct = null;
     let currentEditingPhotos = [];
 
+    // Хеширование пароля через Web Crypto API (SHA-256)
+    async function hashPassword(str) {
+      const enc = new TextEncoder();
+      const buf = await window.crypto.subtle.digest("SHA-256", enc.encode(AUTH_SALT + str));
+      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    // Расшифровка ключа публикации в памяти
+    async function decryptSecureToken(pwd) {
+      const enc = new TextEncoder();
+      const keyMaterial = await window.crypto.subtle.digest("SHA-256", enc.encode(pwd + AUTH_SALT));
+      const key = await window.crypto.subtle.importKey("raw", keyMaterial, "AES-GCM", false, ["decrypt"]);
+      const nonce = Uint8Array.from(atob(CIPHER_NONCE_B64), c => c.charCodeAt(0));
+      const ct = Uint8Array.from(atob(CIPHER_TEXT_B64), c => c.charCodeAt(0));
+      const decrypted = await window.crypto.subtle.decrypt({ name: "AES-GCM", iv: nonce }, key, ct);
+      return new TextDecoder().decode(decrypted);
+    }
+
     // Инициализация при загрузке
     document.addEventListener("DOMContentLoaded", () => {
       loadWorkingData();
@@ -473,8 +510,9 @@
     });
 
     function checkAuth() {
-      const isAuth = sessionStorage.getItem("masterskaya_admin_auth");
-      if (isAuth === "true") {
+      const token = sessionStorage.getItem("__mu_sec_token_v3");
+      if (token) {
+        _sessionDecryptedToken = token;
         document.getElementById("login-overlay").style.display = "none";
         document.getElementById("admin-content").style.display = "block";
         initAdminForms();
@@ -483,25 +521,43 @@
       }
     }
 
-    function checkAdminPassword() {
-      const input = document.getElementById("admin-pass-input").value;
-      const savedPass = localStorage.getItem("masterskaya_admin_pass") || "3585";
-      if (input === savedPass || input === "358587543Tr!") {
-        sessionStorage.setItem("masterskaya_admin_auth", "true");
-        document.getElementById("login-overlay").style.display = "none";
-        document.getElementById("admin-content").style.display = "block";
-        initAdminForms();
-      } else {
-        document.getElementById("login-error").style.display = "block";
+    async function checkAdminPassword() {
+      const input = document.getElementById("admin-pass-input").value.trim();
+      const errBox = document.getElementById("login-error");
+      const submitBtn = document.getElementById("login-submit-btn");
+
+      if (!input) return;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Проверка...";
+
+      try {
+        const computedHash = await hashPassword(input);
+        if (computedHash === EXPECTED_HASH) {
+          const decrypted = await decryptSecureToken(input);
+          _sessionDecryptedToken = decrypted;
+          sessionStorage.setItem("__mu_sec_token_v3", decrypted);
+          errBox.style.display = "none";
+          document.getElementById("login-overlay").style.display = "none";
+          document.getElementById("admin-content").style.display = "block";
+          initAdminForms();
+        } else {
+          errBox.style.display = "block";
+          document.getElementById("admin-pass-input").value = "";
+          document.getElementById("admin-pass-input").focus();
+        }
+      } catch (err) {
+        errBox.style.display = "block";
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Войти";
       }
     }
 
-    function changeAdminPassword() {
-      const newP = document.getElementById("new-admin-pass").value.trim();
-      if (!newP) return;
-      localStorage.setItem("masterskaya_admin_pass", newP);
-      showToast("Пароль успешно изменен!");
-      document.getElementById("new-admin-pass").value = "";
+    function adminLogout() {
+      sessionStorage.clear();
+      _sessionDecryptedToken = null;
+      window.location.reload();
     }
 
     function loadWorkingData() {
