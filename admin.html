@@ -276,6 +276,9 @@
       <button class="admin-nav-btn" onclick="switchTab('sync')">
         🌐 Публикация и Резервная копия
       </button>
+      <button class="admin-nav-btn" onclick="switchTab('password')">
+        🔐 Смена пароля
+      </button>
     </nav>
 
     <!-- ВКЛАДКА 1: КОНТАКТЫ -->
@@ -378,6 +381,35 @@
         </div>
       </div>
     </section>
+
+    <!-- ВКЛАДКА 4: СМЕНА ПАРОЛЯ -->
+    <section class="admin-card" id="tab-password" style="display: none;">
+      <div class="admin-card-title">
+        <span>🔐 Смена пароля администратора</span>
+      </div>
+
+      <p style="font-size: 0.95rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 24px;">
+        Здесь вы можете изменить текущий пароль на любой удобный. Новый пароль будет мгновенно зашифрован криптографическим алгоритмом и автоматически сохранен в коде сайта на GitHub.
+      </p>
+
+      <form onsubmit="event.preventDefault(); changeAdminPassword();" style="max-width: 440px;">
+        <div class="admin-field" style="margin-bottom: 16px;">
+          <label class="admin-label">Новый пароль:</label>
+          <input type="password" id="new-admin-pass" class="admin-input" placeholder="Введите новый пароль (не менее 4 символов)" required minlength="4">
+        </div>
+
+        <div class="admin-field" style="margin-bottom: 20px;">
+          <label class="admin-label">Повторите новый пароль:</label>
+          <input type="password" id="confirm-admin-pass" class="admin-input" placeholder="Повторите новый пароль" required minlength="4">
+        </div>
+
+        <button type="submit" id="btn-save-password" class="btn btn-primary" style="padding: 12px 24px;">
+          🔒 Обновить и сохранить пароль
+        </button>
+      </form>
+
+      <div id="password-change-status" style="margin-top: 18px; font-size: 0.92rem; font-weight: 700; display: none;"></div>
+    </section>
   </div>
 
   <!-- Модальное окно создания / редактирования изделия -->
@@ -458,9 +490,9 @@
   <script>
     // Криптографическая защита доступа (SHA-256 + AES-GCM)
     const AUTH_SALT = "mu_salt_2026_secure";
-    const EXPECTED_HASH = "bd337e12f096a1097ff6fd8d919d190cd70a35f7969e8ced90133ac9caa23dda";
-    const CIPHER_NONCE_B64 = "Zkza0MZaOLYHAplB";
-    const CIPHER_TEXT_B64 = "yvCeTxPUFSiBqBABOMDQqMtnylWbjTN5M9uPzwJ558a40DvI4KuR4MG8BxyazeQ6hEBEggqefSw=";
+    const EXPECTED_HASH = "32e2a0b42c4c9b100af48b3ad739842d987eb1ebfa3f24eece30a2298227df91";
+    const CIPHER_NONCE_B64 = "Eo9z5K9yUdgcBHc5";
+    const CIPHER_TEXT_B64 = "qfue4I/3mEk5gQo50qe8eQXaxFAB5DY1+0yzCIF0vF6UxZjkCWw7XTftBez2Pnw4IDBdhzmcfKE=";
 
     // Сброс старых небезопасных сессионных ключей
     try {
@@ -584,11 +616,15 @@
 
     function switchTab(tabId) {
       document.querySelectorAll(".admin-nav-btn").forEach(b => b.classList.remove("active"));
-      event.target.classList.add("active");
+      if (window.event && window.event.target && window.event.target.classList) {
+        window.event.target.classList.add("active");
+      }
 
       document.getElementById("tab-contacts").style.display = tabId === "contacts" ? "block" : "none";
       document.getElementById("tab-products").style.display = tabId === "products" ? "block" : "none";
       document.getElementById("tab-sync").style.display = tabId === "sync" ? "block" : "none";
+      const pwTab = document.getElementById("tab-password");
+      if (pwTab) pwTab.style.display = tabId === "password" ? "block" : "none";
     }
 
     function saveContacts() {
@@ -865,6 +901,124 @@ const PRODUCTS = ${JSON.stringify(workingProducts, null, 2)};
         }
       } catch (err) {
         alert("Сбой соединения: " + err.message);
+      }
+    }
+
+    // Шифрование токена новым паролем
+    async function encryptTokenWithPassword(token, pwd) {
+      const enc = new TextEncoder();
+      const keyMaterial = await window.crypto.subtle.digest("SHA-256", enc.encode(pwd + AUTH_SALT));
+      const key = await window.crypto.subtle.importKey("raw", keyMaterial, "AES-GCM", false, ["encrypt"]);
+      const iv = window.crypto.getRandomValues(new Uint8Array(12));
+      const encryptedBuf = await window.crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, enc.encode(token));
+      
+      const nonceB64 = btoa(String.fromCharCode(...iv));
+      const ctB64 = btoa(String.fromCharCode(...new Uint8Array(encryptedBuf)));
+      return { nonceB64, ctB64 };
+    }
+
+    async function changeAdminPassword() {
+      const newPass = document.getElementById("new-admin-pass").value.trim();
+      const confirmPass = document.getElementById("confirm-admin-pass").value.trim();
+      const statusEl = document.getElementById("password-change-status");
+      const btn = document.getElementById("btn-save-password");
+
+      if (!newPass || newPass.length < 4) {
+        statusEl.style.display = "block";
+        statusEl.style.color = "#ef4444";
+        statusEl.textContent = "Пароль должен содержать не менее 4 символов.";
+        return;
+      }
+
+      if (newPass !== confirmPass) {
+        statusEl.style.display = "block";
+        statusEl.style.color = "#ef4444";
+        statusEl.textContent = "Пароли не совпадают! Проверьте правильность ввода.";
+        return;
+      }
+
+      const currentToken = GH_CONFIG.token;
+      if (!currentToken) {
+        statusEl.style.display = "block";
+        statusEl.style.color = "#ef4444";
+        statusEl.textContent = "Ошибка авторизации: ключ публикации не найден. Перезагрузите страницу.";
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = "⏳ Сохранение и отправка на GitHub...";
+      statusEl.style.display = "block";
+      statusEl.style.color = "#0284c7";
+      statusEl.textContent = "Шифрование нового пароля...";
+
+      try {
+        const newHash = await hashPassword(newPass);
+        const { nonceB64, ctB64 } = await encryptTokenWithPassword(currentToken, newPass);
+
+        // Получаем актуальный admin.html с GitHub
+        const getUrl = `https://api.github.com/repos/${GH_CONFIG.owner}/${GH_CONFIG.repo}/contents/admin.html`;
+        const getRes = await fetch(getUrl, {
+          headers: {
+            "Authorization": `token ${currentToken}`,
+            "Accept": "application/vnd.github.v3+json"
+          }
+        });
+
+        if (!getRes.ok) {
+          throw new Error("Не удалось загрузить admin.html с GitHub");
+        }
+
+        const getData = await getRes.json();
+        const sha = getData.sha;
+        const rawContent = decodeURIComponent(escape(atob(getData.content)));
+
+        let updatedContent = rawContent.replace(
+          /const EXPECTED_HASH = "[^"]+";/,
+          `const EXPECTED_HASH = "${newHash}";`
+        );
+        updatedContent = updatedContent.replace(
+          /const CIPHER_NONCE_B64 = "[^"]+";/,
+          `const CIPHER_NONCE_B64 = "${nonceB64}";`
+        );
+        updatedContent = updatedContent.replace(
+          /const CIPHER_TEXT_B64 = "[^"]+";/,
+          `const CIPHER_TEXT_B64 = "${ctB64}";`
+        );
+
+        const newBase64 = btoa(unescape(encodeURIComponent(updatedContent)));
+
+        const putRes = await fetch(getUrl, {
+          method: "PUT",
+          headers: {
+            "Authorization": `token ${currentToken}`,
+            "Accept": "application/vnd.github.v3+json",
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            message: "Обновление пароля администратора из панели управления",
+            content: newBase64,
+            sha: sha,
+            branch: GH_CONFIG.branch
+          })
+        });
+
+        if (putRes.ok) {
+          statusEl.style.color = "#16a34a";
+          statusEl.textContent = "🎉 Новый пароль успешно сохранен на сервере! Через 3 секунды произойдет выход для входа с новым паролем...";
+          showToast("Пароль успешно обновлен!");
+          setTimeout(() => {
+            sessionStorage.clear();
+            window.location.reload();
+          }, 3500);
+        } else {
+          const errData = await putRes.json();
+          throw new Error(errData.message || "Ошибка при сохранении на GitHub");
+        }
+      } catch (err) {
+        statusEl.style.color = "#ef4444";
+        statusEl.textContent = "Ошибка: " + err.message;
+        btn.disabled = false;
+        btn.textContent = "🔒 Обновить и сохранить пароль";
       }
     }
 
